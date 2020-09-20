@@ -98,14 +98,8 @@ func (b *Builder) Run(ctx context.Context, ui packer.Ui, hook packer.Hook) (pack
 		return nil, errors.New("build was cancelled")
 	}
 
-	// Verify that the template_id was set properly, otherwise we didn't progress through the last step
-	tplID, ok := state.Get("template_id").(int)
-	if !ok {
-		return nil, fmt.Errorf("template ID could not be determined")
-	}
-
 	artifact := &Artifact{
-		templateID:    tplID,
+		templatePath:    b.config.OutputPath,
 		proxmoxClient: b.proxmoxClient,
 		StateData:     map[string]interface{}{"generated_data": state.Get("generated_data")},
 	}
@@ -128,29 +122,11 @@ func commHost(host string) func(state multistep.StateBag) (string, error) {
 // qemu-guest-agent package must be installed on the VM
 func getVMIP(state multistep.StateBag) (string, error) {
 	client := state.Get("proxmoxClient").(*proxmox.Client)
-	config := state.Get("config").(*Config)
 	vmRef := state.Get("vmRef").(*proxmox.VmRef)
 
 	ifs, err := client.GetVmAgentNetworkInterfaces(vmRef)
 	if err != nil {
 		return "", err
-	}
-
-	if config.VMInterface != "" {
-		for _, iface := range ifs {
-			if config.VMInterface != iface.Name {
-				continue
-			}
-
-			for _, addr := range iface.IPAddresses {
-				if addr.IsLoopback() {
-					continue
-				}
-				return addr.String(), nil
-			}
-			return "", fmt.Errorf("Interface %s only has loopback addresses", config.VMInterface)
-		}
-		return "", fmt.Errorf("Interface %s not found in VM", config.VMInterface)
 	}
 
 	for _, iface := range ifs {

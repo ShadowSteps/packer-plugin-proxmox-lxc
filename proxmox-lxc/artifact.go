@@ -2,15 +2,14 @@ package proxmox_lxc
 
 import (
 	"fmt"
-	"log"
-	"strconv"
-
 	"github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/packer/packer"
+	"log"
+	"os"
 )
 
 type Artifact struct {
-	templateID    int
+	templatePath   string
 	proxmoxClient *proxmox.Client
 
 	// StateData should store data such as GeneratedData
@@ -25,16 +24,16 @@ func (*Artifact) BuilderId() string {
 	return BuilderId
 }
 
-func (*Artifact) Files() []string {
-	return nil
+func (a *Artifact) Files() []string {
+	return []string{a.templatePath}
 }
 
 func (a *Artifact) Id() string {
-	return strconv.Itoa(a.templateID)
+	return a.templatePath
 }
 
 func (a *Artifact) String() string {
-	return fmt.Sprintf("A template was created: %d", a.templateID)
+	return fmt.Sprintf("A template was created: %s", a.templatePath)
 }
 
 func (a *Artifact) State(name string) interface{} {
@@ -42,7 +41,7 @@ func (a *Artifact) State(name string) interface{} {
 }
 
 func (a *Artifact) Destroy() error {
-	log.Printf("Destroying template: %d", a.templateID)
-	_, err := a.proxmoxClient.DeleteVm(proxmox.NewVmRef(a.templateID))
+	log.Printf("Destroying template: %s", a.templatePath)
+	err := os.Remove(a.templatePath)
 	return err
 }

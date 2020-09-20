@@ -32,21 +32,20 @@ func (s *stepStartContainer) Run(ctx context.Context, state multistep.StateBag) 
 	config.Start = true
 	config.Storage = c.TemplateStoragePool
 	config.RootFs = c.FSStorage + ":" + strconv.Itoa(c.FSSize)
-	if c.SSHPublicKeyPath != "" {
-		keyPath, err := packer.ExpandUser(c.SSHPublicKeyPath)
-		if err == nil {
-			content, err := ioutil.ReadFile(keyPath)
-			if err == nil {
-				config.SSHPublicKeys = string(content)
-			} else {
-				err := fmt.Errorf("Error uploading SSH key: %s", err)
-				ui.Message(err.Error())
-			}
-		} else {
-			err := fmt.Errorf("Error uploading SSH key: %s", err)
-			ui.Message(err.Error())
-		}
+	keyPath, err := packer.ExpandUser(c.ProvisionPublicKeyPath)
+	if err != nil {
+		err := fmt.Errorf("Error uploading SSH key: %s", err)
+		ui.Message(err.Error())
+		return multistep.ActionHalt
 	}
+	content, err := ioutil.ReadFile(keyPath)
+	if err != nil {
+		err := fmt.Errorf("Error uploading SSH key: %s", err)
+		ui.Message(err.Error())
+		return multistep.ActionHalt
+	}
+
+	config.SSHPublicKeys = string(content)
 	config.Networks = proxmox.QemuDevices{
 		0: {
 			"bridge":   "vmbr0",
@@ -81,7 +80,7 @@ func (s *stepStartContainer) Run(ctx context.Context, state multistep.StateBag) 
 		vmRef.SetPool(c.Pool)
 	}
 
-	err := config.CreateLxc(vmRef, client)
+	err = config.CreateLxc(vmRef, client)
 	if err != nil {
 		state.Put("error", err)
 		ui.Error(err.Error())

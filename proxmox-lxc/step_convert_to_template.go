@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
-	"log"
 	"net/url"
 	"os"
 	"path"
@@ -27,6 +26,7 @@ import (
 type stepConvertToTemplate struct{}
 
 type templateConverter interface {
+	DeleteVm(*proxmox.VmRef) (string, error)
 	ShutdownVm(*proxmox.VmRef) (string, error)
 	CreateTemplate(*proxmox.VmRef) error
 	WaitForCompletion(taskResponse map[string]interface{}) (waitExitStatus string, err error)
@@ -89,39 +89,39 @@ func (s *stepConvertToTemplate) Run(ctx context.Context, state multistep.StateBa
 		return multistep.ActionHalt
 	}
 
-	err = downloadBackup(strings.Replace(c.Username, "@pam", "", 1), c.Comm.SSHPrivateKey, c.ProvisionIP, c.ProvisionPort, c.VMID, c.OutputPath)
+	err = downloadBackup(ui, strings.Replace(c.Username, "@pam", "", 1), c.Password, c.proxmoxURL.Hostname(), 22, c.VMID, c.OutputPath)
 	if err != nil {
 		err := fmt.Errorf("Error converting VM to template, failed to donwload backup: %s", err)
 		state.Put("error", err)
 		ui.Error(err.Error())
 		return multistep.ActionHalt
 	}
-
-	log.Printf("template_id: %d", vmRef.VmId())
-	state.Put("template_id", vmRef.VmId())
+	ui.Say("Deleting LXC Container")
+	_, err = client.DeleteVm(vmRef)
+	if err != nil {
+		ui.Error(fmt.Sprintf("Error deleting VM. Please delete it manually: %s", err))
+	}
 
 	return multistep.ActionContinue
 }
 
 func (s *stepConvertToTemplate) Cleanup(state multistep.StateBag) {}
 
-func downloadBackup(apiUser string, apiSSHKey []byte, apiAddr string, apiPort int, vmId int, dstPath string) error {
-	signer, err := ssh.ParsePrivateKey(apiSSHKey)
-	if err != nil {
-		return fmt.Errorf("Could load SSH key! %w" , err)
-	}
-
+func downloadBackup(ui packer.Ui, apiUser string, apiPassword string, apiAddr string, apiPort int, vmId int, dstPath string) error {
 	config := &ssh.ClientConfig{
 		User: apiUser,
 		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(signer),
+			ssh.Password(apiPassword),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
-	client, _ := ssh.Dial("tcp", apiAddr+":" + strconv.Itoa(apiPort), config)
+	var sshAddr string = apiAddr+":" + strconv.Itoa(apiPort)
+	ui.Say("Establishing SSH connection with ["+apiUser+"] at ["+sshAddr+"] for template file...")
+	client, _ := ssh.Dial("tcp",sshAddr , config)
 	defer client.Close()
 
+	ui.Say("Establishing SFTP connection for template file...")
 	// open an SFTP session over an existing ssh connection.
 	ftpClient, err := sftp.NewClient(client)
 	if err != nil {
@@ -129,6 +129,7 @@ func downloadBackup(apiUser string, apiSSHKey []byte, apiAddr string, apiPort in
 	}
 	defer ftpClient.Close()
 
+	ui.Say("Listing vzdump backup directory for template backup...")
 	dir :=  "/var/lib/vz/dump/"
 	files, err := ftpClient.ReadDir(dir)
 
@@ -144,18 +145,21 @@ func downloadBackup(apiUser string, apiSSHKey []byte, apiAddr string, apiPort in
 		return fmt.Errorf("could not find backup file for LXC container %d", vmId)
 	}
 
+	ui.Say("Opening vzdump template backup "+srcFilePath+"...")
 	srcFile, err := ftpClient.Open(srcFilePath)
 	if err != nil {
 		return err
 	}
 	defer srcFile.Close()
 
+	ui.Say("Creating local template file "+dstPath+"...")
 	dstFile, err := os.Create(dstPath)
 	if err != nil {
 		return err
 	}
 	defer dstFile.Close()
 
+	ui.Say("Transferring vzdump template backup file to local path...")
 	// write to file
 	if  _, err := dstFile.ReadFrom(srcFile); err!= nil {
 		return err

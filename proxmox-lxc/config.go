@@ -34,30 +34,26 @@ type Config struct {
 	Node               string `mapstructure:"node"`
 	Pool               string `mapstructure:"pool"`
 
-	Memory         int          `mapstructure:"memory"`
-	Cores          int          `mapstructure:"cores"`
+	Memory         	    int          `mapstructure:"memory"`
+	Cores               int          `mapstructure:"cores"`
 	TemplateFile        string       `mapstructure:"template_file"`
 	TemplateStoragePool string       `mapstructure:"template_storage_pool"`
-	Agent          bool         `mapstructure:"qemu_agent"`
-	Onboot         bool         `mapstructure:"onboot"`
-	FSStorage         string         `mapstructure:"filesystem_storage"`
-	FSSize         int         `mapstructure:"filesystem_size"`
-	VMID         int         `mapstructure:"vmid"`
+	FSStorage           string       `mapstructure:"filesystem_storage"`
+	FSSize              int          `mapstructure:"filesystem_size"`
+	VMID                int          `mapstructure:"vmid"`
 
-	VMInterface        string          `mapstructure:"vm_interface"`
-	OutputPath        string          `mapstructure:"output_path"`
-	ProvisionIP        string          `mapstructure:"provision_ip"`
-	ProvisionMac       string          `mapstructure:"provision_mac"`
-	ProvisionPort        int          `mapstructure:"provision_port"`
-	SSHPublicKeyPath        string          `mapstructure:"ssh_public_key_file"`
+	OutputPath          string       `mapstructure:"output_path"`
+	ProvisionIP         string       `mapstructure:"provision_ip"`
+	ProvisionMac        string       `mapstructure:"provision_mac"`
+	ProvisionPort       int          `mapstructure:"provision_port"`
+	ProvisionPublicKeyPath string    `mapstructure:"provision_public_key_file"`
+	ProvisionPrivateKeyPath string   `mapstructure:"provision_private_key_file"`
+	ProvisionPassword    string      `mapstructure:"provision_password"`
 
 	ctx interpolate.Context
 }
 
 func (c *Config) Prepare(raws ...interface{}) ([]string, error) {
-	// Agent defaults to true
-	c.Agent = true
-
 	var md mapstructure.Metadata
 	err := config.Decode(c, &config.DecodeOpts{
 		Metadata:           &md,
@@ -102,9 +98,15 @@ func (c *Config) Prepare(raws ...interface{}) ([]string, error) {
 		c.ProvisionMac = "1e:eb:08:d1:e7:e2"
 	}
 
-	errs = packer.MultiErrorAppend(errs, c.Comm.Prepare(&c.ctx)...)
-	errs = packer.MultiErrorAppend(errs, c.BootConfig.Prepare(&c.ctx)...)
-	errs = packer.MultiErrorAppend(errs, c.HTTPConfig.Prepare(&c.ctx)...)
+	if c.ProvisionPassword == "" {
+		c.ProvisionPassword = "provision"
+	}
+
+	if c.TemplateStoragePool == "" {
+		c.TemplateStoragePool = "local"
+	}
+
+
 
 	// Required configurations that will display errors if not set
 	if c.Username == "" {
@@ -136,9 +138,28 @@ func (c *Config) Prepare(raws ...interface{}) ([]string, error) {
 		errs = packer.MultiErrorAppend(errs, errors.New("provision_ip must be specified"))
 	}
 
-	if c.TemplateStoragePool == "" {
-		c.TemplateStoragePool = "local"
+	if c.ProvisionPublicKeyPath == "" {
+		errs = packer.MultiErrorAppend(errs, errors.New("provision_public_key_file must be specified"))
 	}
+
+	if c.ProvisionPrivateKeyPath == "" {
+		errs = packer.MultiErrorAppend(errs, errors.New("provision_private_key_file must be specified"))
+	}
+
+	if c.OutputPath == "" {
+		errs = packer.MultiErrorAppend(errs, errors.New("output_path must be specified"))
+	}
+
+	// Set internal values
+	c.Comm.SSHPrivateKeyFile = c.ProvisionPrivateKeyPath
+	c.Comm.SSHHost = c.ProvisionIP
+	c.Comm.SSHPort = c.ProvisionPort
+	c.Comm.SSHUsername = "root"
+	c.Comm.SSHPassword = c.ProvisionPassword
+
+	errs = packer.MultiErrorAppend(errs, c.Comm.Prepare(&c.ctx)...)
+	errs = packer.MultiErrorAppend(errs, c.BootConfig.Prepare(&c.ctx)...)
+	errs = packer.MultiErrorAppend(errs, c.HTTPConfig.Prepare(&c.ctx)...)
 	
 	if errs != nil && len(errs.Errors) > 0 {
 		return nil, errs

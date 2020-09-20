@@ -81,17 +81,16 @@ type FlatConfig struct {
 	Cores                     *int              `mapstructure:"cores" cty:"cores" hcl:"cores"`
 	TemplateFile              *string           `mapstructure:"template_file" cty:"template_file" hcl:"template_file"`
 	TemplateStoragePool       *string           `mapstructure:"template_storage_pool" cty:"template_storage_pool" hcl:"template_storage_pool"`
-	Agent                     *bool             `mapstructure:"qemu_agent" cty:"qemu_agent" hcl:"qemu_agent"`
-	Onboot                    *bool             `mapstructure:"onboot" cty:"onboot" hcl:"onboot"`
 	FSStorage                 *string           `mapstructure:"filesystem_storage" cty:"filesystem_storage" hcl:"filesystem_storage"`
 	FSSize                    *int              `mapstructure:"filesystem_size" cty:"filesystem_size" hcl:"filesystem_size"`
 	VMID                      *int              `mapstructure:"vmid" cty:"vmid" hcl:"vmid"`
-	VMInterface               *string           `mapstructure:"vm_interface" cty:"vm_interface" hcl:"vm_interface"`
 	OutputPath                *string           `mapstructure:"output_path" cty:"output_path" hcl:"output_path"`
 	ProvisionIP               *string           `mapstructure:"provision_ip" cty:"provision_ip" hcl:"provision_ip"`
 	ProvisionMac              *string           `mapstructure:"provision_mac" cty:"provision_mac" hcl:"provision_mac"`
 	ProvisionPort             *int              `mapstructure:"provision_port" cty:"provision_port" hcl:"provision_port"`
-	SSHPublicKeyPath          *string           `mapstructure:"ssh_public_key_file" cty:"ssh_public_key_file" hcl:"ssh_public_key_file"`
+	ProvisionPublicKeyPath    *string           `mapstructure:"provision_public_key_file" cty:"provision_public_key_file" hcl:"provision_public_key_file"`
+	ProvisionPrivateKeyPath   *string           `mapstructure:"provision_private_key_file" cty:"provision_private_key_file" hcl:"provision_private_key_file"`
+	ProvisionPassword         *string           `mapstructure:"provision_password" cty:"provision_password" hcl:"provision_password"`
 }
 
 // FlatMapstructure returns a new FlatConfig.
@@ -178,17 +177,16 @@ func (*FlatConfig) HCL2Spec() map[string]hcldec.Spec {
 		"cores":                        &hcldec.AttrSpec{Name: "cores", Type: cty.Number, Required: false},
 		"template_file":                &hcldec.AttrSpec{Name: "template_file", Type: cty.String, Required: false},
 		"template_storage_pool":        &hcldec.AttrSpec{Name: "template_storage_pool", Type: cty.String, Required: false},
-		"qemu_agent":                   &hcldec.AttrSpec{Name: "qemu_agent", Type: cty.Bool, Required: false},
-		"onboot":                       &hcldec.AttrSpec{Name: "onboot", Type: cty.Bool, Required: false},
 		"filesystem_storage":           &hcldec.AttrSpec{Name: "filesystem_storage", Type: cty.String, Required: false},
 		"filesystem_size":              &hcldec.AttrSpec{Name: "filesystem_size", Type: cty.Number, Required: false},
 		"vmid":                         &hcldec.AttrSpec{Name: "vmid", Type: cty.Number, Required: false},
-		"vm_interface":                 &hcldec.AttrSpec{Name: "vm_interface", Type: cty.String, Required: false},
 		"output_path":                  &hcldec.AttrSpec{Name: "output_path", Type: cty.String, Required: false},
 		"provision_ip":                 &hcldec.AttrSpec{Name: "provision_ip", Type: cty.String, Required: false},
 		"provision_mac":                &hcldec.AttrSpec{Name: "provision_mac", Type: cty.String, Required: false},
 		"provision_port":               &hcldec.AttrSpec{Name: "provision_port", Type: cty.Number, Required: false},
-		"ssh_public_key_file":          &hcldec.AttrSpec{Name: "ssh_public_key_file", Type: cty.String, Required: false},
+		"provision_public_key_file":    &hcldec.AttrSpec{Name: "provision_public_key_file", Type: cty.String, Required: false},
+		"provision_private_key_file":   &hcldec.AttrSpec{Name: "provision_private_key_file", Type: cty.String, Required: false},
+		"provision_password":           &hcldec.AttrSpec{Name: "provision_password", Type: cty.String, Required: false},
 	}
 	return s
 }
