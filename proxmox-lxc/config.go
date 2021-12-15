@@ -5,12 +5,13 @@ package proxmox_lxc
 import (
 	"errors"
 	"fmt"
-	"github.com/hashicorp/packer/common"
-	"github.com/hashicorp/packer/common/bootcommand"
-	"github.com/hashicorp/packer/helper/communicator"
-	"github.com/hashicorp/packer/helper/config"
-	"github.com/hashicorp/packer/packer"
-	"github.com/hashicorp/packer/template/interpolate"
+	"github.com/hashicorp/packer-plugin-sdk/bootcommand"
+	"github.com/hashicorp/packer-plugin-sdk/common"
+	"github.com/hashicorp/packer-plugin-sdk/communicator"
+	"github.com/hashicorp/packer-plugin-sdk/multistep/commonsteps"
+	"github.com/hashicorp/packer-plugin-sdk/packer"
+	"github.com/hashicorp/packer-plugin-sdk/template/config"
+	"github.com/hashicorp/packer-plugin-sdk/template/interpolate"
 	"github.com/mitchellh/mapstructure"
 	"log"
 	"net/url"
@@ -21,7 +22,7 @@ import (
 
 type Config struct {
 	common.PackerConfig    `mapstructure:",squash"`
-	common.HTTPConfig      `mapstructure:",squash"`
+	commonsteps.HTTPConfig `mapstructure:",squash"`
 	bootcommand.BootConfig `mapstructure:",squash"`
 	Comm                   communicator.Config `mapstructure:",squash"`
 	BootKeyInterval        time.Duration       `mapstructure:"boot_key_interval"`
@@ -34,21 +35,22 @@ type Config struct {
 	Node               string `mapstructure:"node"`
 	Pool               string `mapstructure:"pool"`
 
-	Memory         	    int          `mapstructure:"memory"`
-	Cores               int          `mapstructure:"cores"`
-	TemplateFile        string       `mapstructure:"template_file"`
-	TemplateStoragePool string       `mapstructure:"template_storage_pool"`
-	FSStorage           string       `mapstructure:"filesystem_storage"`
-	FSSize              int          `mapstructure:"filesystem_size"`
-	VMID                int          `mapstructure:"vmid"`
+	Memory              int    `mapstructure:"memory"`
+	Cores               int    `mapstructure:"cores"`
+	Unprivileged        bool   `mapstructure:"unprivileged"`
+	TemplateFile        string `mapstructure:"template_file"`
+	TemplateStoragePool string `mapstructure:"template_storage_pool"`
+	FSStorage           string `mapstructure:"filesystem_storage"`
+	FSSize              int    `mapstructure:"filesystem_size"`
+	VMID                int    `mapstructure:"vmid"`
 
-	OutputPath          string       `mapstructure:"output_path"`
-	ProvisionIP         string       `mapstructure:"provision_ip"`
-	ProvisionMac        string       `mapstructure:"provision_mac"`
-	ProvisionPort       int          `mapstructure:"provision_port"`
-	ProvisionPublicKeyPath string    `mapstructure:"provision_public_key_file"`
-	ProvisionPrivateKeyPath string   `mapstructure:"provision_private_key_file"`
-	ProvisionPassword    string      `mapstructure:"provision_password"`
+	OutputPath              string `mapstructure:"output_path"`
+	ProvisionIP             string `mapstructure:"provision_ip"`
+	ProvisionMac            string `mapstructure:"provision_mac"`
+	ProvisionPort           int    `mapstructure:"provision_port"`
+	ProvisionPublicKeyPath  string `mapstructure:"provision_public_key_file"`
+	ProvisionPrivateKeyPath string `mapstructure:"provision_private_key_file"`
+	ProvisionPassword       string `mapstructure:"provision_password"`
 
 	ctx interpolate.Context
 }
@@ -106,8 +108,6 @@ func (c *Config) Prepare(raws ...interface{}) ([]string, error) {
 		c.TemplateStoragePool = "local"
 	}
 
-
-
 	// Required configurations that will display errors if not set
 	if c.Username == "" {
 		errs = packer.MultiErrorAppend(errs, errors.New("username must be specified"))
@@ -160,7 +160,7 @@ func (c *Config) Prepare(raws ...interface{}) ([]string, error) {
 	errs = packer.MultiErrorAppend(errs, c.Comm.Prepare(&c.ctx)...)
 	errs = packer.MultiErrorAppend(errs, c.BootConfig.Prepare(&c.ctx)...)
 	errs = packer.MultiErrorAppend(errs, c.HTTPConfig.Prepare(&c.ctx)...)
-	
+
 	if errs != nil && len(errs.Errors) > 0 {
 		return nil, errs
 	}

@@ -79,6 +79,7 @@ type FlatConfig struct {
 	Pool                      *string           `mapstructure:"pool" cty:"pool" hcl:"pool"`
 	Memory                    *int              `mapstructure:"memory" cty:"memory" hcl:"memory"`
 	Cores                     *int              `mapstructure:"cores" cty:"cores" hcl:"cores"`
+	Unprivileged              *bool             `mapstructure:"unprivileged" cty:"unprivileged" hcl:"unprivileged"`
 	TemplateFile              *string           `mapstructure:"template_file" cty:"template_file" hcl:"template_file"`
 	TemplateStoragePool       *string           `mapstructure:"template_storage_pool" cty:"template_storage_pool" hcl:"template_storage_pool"`
 	FSStorage                 *string           `mapstructure:"filesystem_storage" cty:"filesystem_storage" hcl:"filesystem_storage"`
@@ -175,6 +176,7 @@ func (*FlatConfig) HCL2Spec() map[string]hcldec.Spec {
 		"pool":                         &hcldec.AttrSpec{Name: "pool", Type: cty.String, Required: false},
 		"memory":                       &hcldec.AttrSpec{Name: "memory", Type: cty.Number, Required: false},
 		"cores":                        &hcldec.AttrSpec{Name: "cores", Type: cty.Number, Required: false},
+		"unprivileged":                 &hcldec.AttrSpec{Name: "unprivileged", Type: cty.Bool, Required: false},
 		"template_file":                &hcldec.AttrSpec{Name: "template_file", Type: cty.String, Required: false},
 		"template_storage_pool":        &hcldec.AttrSpec{Name: "template_storage_pool", Type: cty.String, Required: false},
 		"filesystem_storage":           &hcldec.AttrSpec{Name: "filesystem_storage", Type: cty.String, Required: false},

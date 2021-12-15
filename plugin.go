@@ -1,10 +1,9 @@
 package main
 
 import (
-	"github.com/hashicorp/packer/packer/plugin"
+	"github.com/hashicorp/packer-plugin-sdk/plugin"
 	"proxmox-lxc/proxmox-lxc"
 )
-
 
 func main() {
 	server, err := plugin.Server()

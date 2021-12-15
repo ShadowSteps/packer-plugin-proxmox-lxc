@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/hashicorp/packer-plugin-sdk/multistep"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 	"net/url"
@@ -15,8 +16,7 @@ import (
 	"strings"
 
 	"github.com/Telmate/proxmox-api-go/proxmox"
-	"github.com/hashicorp/packer/helper/multistep"
-	"github.com/hashicorp/packer/packer"
+	packersdk "github.com/hashicorp/packer-plugin-sdk/packer"
 )
 
 // stepConvertToTemplate takes the running VM configured in earlier steps, stops it, and
@@ -35,7 +35,7 @@ type templateConverter interface {
 var _ templateConverter = &proxmox.Client{}
 
 func (s *stepConvertToTemplate) Run(ctx context.Context, state multistep.StateBag) multistep.StepAction {
-	ui := state.Get("ui").(packer.Ui)
+	ui := state.Get("ui").(packersdk.Ui)
 	c := state.Get("config").(*Config)
 	client := state.Get("proxmoxClient").(templateConverter)
 	vmRef := state.Get("vmRef").(*proxmox.VmRef)
@@ -52,7 +52,7 @@ func (s *stepConvertToTemplate) Run(ctx context.Context, state multistep.StateBa
 	ui.Say("Converting LXC Container to template")
 
 	tlsConf := &tls.Config{InsecureSkipVerify: true}
-	session, _ := proxmox.NewSession(c.proxmoxURL.String(), nil, tlsConf)
+	session, _ := proxmox.NewSession(c.proxmoxURL.String(), nil, "", tlsConf)
 	err = session.Login(c.Username, c.Password, "")
 	if err != nil {
 		err := fmt.Errorf("Error converting VM to template, failed to create session: %s", err)
@@ -107,7 +107,7 @@ func (s *stepConvertToTemplate) Run(ctx context.Context, state multistep.StateBa
 
 func (s *stepConvertToTemplate) Cleanup(state multistep.StateBag) {}
 
-func downloadBackup(ui packer.Ui, apiUser string, apiPassword string, apiAddr string, apiPort int, vmId int, dstPath string) error {
+func downloadBackup(ui packersdk.Ui, apiUser string, apiPassword string, apiAddr string, apiPort int, vmId int, dstPath string) error {
 	config := &ssh.ClientConfig{
 		User: apiUser,
 		Auth: []ssh.AuthMethod{
@@ -116,9 +116,9 @@ func downloadBackup(ui packer.Ui, apiUser string, apiPassword string, apiAddr st
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
-	var sshAddr string = apiAddr+":" + strconv.Itoa(apiPort)
-	ui.Say("Establishing SSH connection with ["+apiUser+"] at ["+sshAddr+"] for template file...")
-	client, _ := ssh.Dial("tcp",sshAddr , config)
+	var sshAddr string = apiAddr + ":" + strconv.Itoa(apiPort)
+	ui.Say("Establishing SSH connection with [" + apiUser + "] at [" + sshAddr + "] for template file...")
+	client, _ := ssh.Dial("tcp", sshAddr, config)
 	defer client.Close()
 
 	ui.Say("Establishing SFTP connection for template file...")
@@ -130,7 +130,7 @@ func downloadBackup(ui packer.Ui, apiUser string, apiPassword string, apiAddr st
 	defer ftpClient.Close()
 
 	ui.Say("Listing vzdump backup directory for template backup...")
-	dir :=  "/var/lib/vz/dump/"
+	dir := "/var/lib/vz/dump/"
 	files, err := ftpClient.ReadDir(dir)
 
 	var srcFilePath = ""
@@ -145,14 +145,14 @@ func downloadBackup(ui packer.Ui, apiUser string, apiPassword string, apiAddr st
 		return fmt.Errorf("could not find backup file for LXC container %d", vmId)
 	}
 
-	ui.Say("Opening vzdump template backup "+srcFilePath+"...")
+	ui.Say("Opening vzdump template backup " + srcFilePath + "...")
 	srcFile, err := ftpClient.Open(srcFilePath)
 	if err != nil {
 		return err
 	}
 	defer srcFile.Close()
 
-	ui.Say("Creating local template file "+dstPath+"...")
+	ui.Say("Creating local template file " + dstPath + "...")
 	dstFile, err := os.Create(dstPath)
 	if err != nil {
 		return err
@@ -161,7 +161,7 @@ func downloadBackup(ui packer.Ui, apiUser string, apiPassword string, apiAddr st
 
 	ui.Say("Transferring vzdump template backup file to local path...")
 	// write to file
-	if  _, err := dstFile.ReadFrom(srcFile); err!= nil {
+	if _, err := dstFile.ReadFrom(srcFile); err != nil {
 		return err
 	}
 

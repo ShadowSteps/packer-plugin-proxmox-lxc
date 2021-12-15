@@ -3,13 +3,13 @@ package proxmox_lxc
 import (
 	"context"
 	"fmt"
+	"github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/hashicorp/packer-plugin-sdk/multistep"
+	packersdk "github.com/hashicorp/packer-plugin-sdk/packer"
+	"github.com/hashicorp/packer-plugin-sdk/pathing"
 	"io/ioutil"
 	"log"
 	"strconv"
-
-	"github.com/Telmate/proxmox-api-go/proxmox"
-	"github.com/hashicorp/packer/helper/multistep"
-	"github.com/hashicorp/packer/packer"
 )
 
 // stepStartContainer takes the given configuration and starts a VM on the given Proxmox node.
@@ -19,7 +19,7 @@ import (
 type stepStartContainer struct{}
 
 func (s *stepStartContainer) Run(ctx context.Context, state multistep.StateBag) multistep.StepAction {
-	ui := state.Get("ui").(packer.Ui)
+	ui := state.Get("ui").(packersdk.Ui)
 	client := state.Get("proxmoxClient").(*proxmox.Client)
 	c := state.Get("config").(*Config)
 
@@ -28,11 +28,15 @@ func (s *stepStartContainer) Run(ctx context.Context, state multistep.StateBag) 
 	config := proxmox.NewConfigLxc()
 	config.Ostemplate = c.TemplateStoragePool + ":vztmpl/" + c.TemplateFile
 	config.Force = true
+	config.Unprivileged = c.Unprivileged
 	config.Password = c.Comm.SSHPassword
 	config.Start = true
 	config.Storage = c.TemplateStoragePool
-	config.RootFs = c.FSStorage + ":" + strconv.Itoa(c.FSSize)
-	keyPath, err := packer.ExpandUser(c.ProvisionPublicKeyPath)
+	config.RootFs = proxmox.QemuDevice{
+		"storage": c.FSStorage,
+		"size":    strconv.Itoa(c.FSSize) + "G",
+	}
+	keyPath, err := pathing.ExpandUser(c.ProvisionPublicKeyPath)
 	if err != nil {
 		err := fmt.Errorf("Error uploading SSH key: %s", err)
 		ui.Message(err.Error())
@@ -52,8 +56,15 @@ func (s *stepStartContainer) Run(ctx context.Context, state multistep.StateBag) 
 			"name":     "eth0",
 			"ip":       "dhcp",
 			"firewall": 0,
-			"hwaddr": c.ProvisionMac,
+			"hwaddr":   c.ProvisionMac,
 		},
+	}
+
+	if c.Unprivileged {
+		config.Features = proxmox.QemuDevice{
+			"keyctl":  1,
+			"nesting": 1,
+		}
 	}
 
 	if c.VMID == 0 {
@@ -127,7 +138,7 @@ func (s *stepStartContainer) Cleanup(state multistep.StateBag) {
 	}
 
 	client := state.Get("proxmoxClient").(startedVMCleaner)
-	ui := state.Get("ui").(packer.Ui)
+	ui := state.Get("ui").(packersdk.Ui)
 
 	// Destroy the server we just created
 	ui.Say("Stopping LXC Container")

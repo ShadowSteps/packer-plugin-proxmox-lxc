@@ -3,13 +3,13 @@ package proxmox_lxc
 import (
 	"fmt"
 	"github.com/Telmate/proxmox-api-go/proxmox"
-	"github.com/hashicorp/packer/packer"
+	packersdk "github.com/hashicorp/packer-plugin-sdk/packer"
 	"log"
 	"os"
 )
 
 type Artifact struct {
-	templatePath   string
+	templatePath  string
 	proxmoxClient *proxmox.Client
 
 	// StateData should store data such as GeneratedData
@@ -18,7 +18,7 @@ type Artifact struct {
 }
 
 // Artifact implements packer.Artifact
-var _ packer.Artifact = &Artifact{}
+var _ packersdk.Artifact = &Artifact{}
 
 func (*Artifact) BuilderId() string {
 	return BuilderId
