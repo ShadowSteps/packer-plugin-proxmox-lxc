@@ -151,11 +151,13 @@ func (c *Config) Prepare(raws ...interface{}) ([]string, error) {
 	}
 
 	// Set internal values
+	//c.Comm.SSHAgentAuth = true
 	c.Comm.SSHPrivateKeyFile = c.ProvisionPrivateKeyPath
 	c.Comm.SSHHost = c.ProvisionIP
 	c.Comm.SSHPort = c.ProvisionPort
 	c.Comm.SSHUsername = "root"
-	c.Comm.SSHPassword = c.ProvisionPassword
+	
+	//c.Comm.SSHPassword = c.ProvisionPassword
 
 	errs = packer.MultiErrorAppend(errs, c.Comm.Prepare(&c.ctx)...)
 	errs = packer.MultiErrorAppend(errs, c.BootConfig.Prepare(&c.ctx)...)
