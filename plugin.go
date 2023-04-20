@@ -1,15 +1,18 @@
 package main
 
 import (
+	"fmt"
 	"github.com/hashicorp/packer-plugin-sdk/plugin"
+	"os"
 	"proxmox-lxc/proxmox-lxc"
 )
 
 func main() {
-	server, err := plugin.Server()
+	pps := plugin.NewSet()
+	pps.RegisterBuilder("proxmox-lxc", new(proxmox_lxc.Builder))
+	err := pps.Run()
 	if err != nil {
-		panic(err)
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
 	}
-	server.RegisterBuilder(new(proxmox_lxc.Builder))
-	server.Serve()
 }
