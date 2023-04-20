@@ -41,7 +41,7 @@ builds:
     ignore:
       - goos: linux
         goarch: amd64
-    binary: '{{ .ProjectName }}_v{{ .Version }}_{{ .Env.API_VERSION }}_{{ .Os }}_{{ .Arch }}'
+    binary: '{{ .ProjectName }}_v{{ .Version }}_x{{ .Env.API_VERSION }}_{{ .Os }}_{{ .Arch }}'
 archives:
   - format: zip
     files:
